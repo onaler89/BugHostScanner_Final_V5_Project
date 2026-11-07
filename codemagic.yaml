@@ -1,4 +1,3 @@
-
 workflows:
   android-debug:
     name: Bug Host Scanner APK
