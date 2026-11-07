@@ -1,3 +1,4 @@
+
 workflows:
   android-debug:
     name: Bug Host Scanner APK
@@ -5,34 +6,42 @@ workflows:
     instance_type: mac_mini_m2
 
     scripts:
-            - name: Extract project ZIP
+      - name: Extract project ZIP
         script: |
           mkdir -p project
           ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
           if [ -z "$ZIP_FILE" ]; then
-            echo "ZIP tidak ditemukan"
+            echo "ERROR: ZIP tidak ditemukan"
             ls -la
             exit 1
           fi
           echo "ZIP ditemukan: $ZIP_FILE"
           unzip -o "$ZIP_FILE" -d project
 
-      - name: Find Gradle project
+      - name: Find Gradle project and build APK
         script: |
           SETTINGS=$(find project -name settings.gradle.kts -print -quit)
+
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: settings.gradle.kts tidak ditemukan"
-            find project -maxdepth 4 -type f
+            find project -maxdepth 5 -type f
             exit 1
           fi
+
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "Project ditemukan: $PROJECT_DIR"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
 
-      - name: Build APK
-        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$PROJECT_DIR/local.properties"
+
+          curl -L https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q -o /tmp/gradle.zip -d /tmp
+
+          export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+          export PATH="$JAVA_HOME/bin:$PATH"
+
+          java -version
+
           cd "$PROJECT_DIR"
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
           /tmp/gradle-8.9/bin/gradle --no-daemon assembleDebug
 
     artifacts:
