@@ -1,20 +1,33 @@
+
 workflows:
   android-debug:
     name: Bug Host Scanner APK
     max_build_duration: 60
     instance_type: mac_mini_m2
+
     scripts:
       - name: Extract project ZIP
         script: |
-          mkdir project
-          unzip -q BugHostScanner_Codemagic_Ready.zip -d project
-          cd project
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          mkdir -p project
+          unzip -o BugHostScanner_Codemagic_Ready.zip -d project
+
+      - name: Find Gradle project
+        script: |
+          SETTINGS=$(find project -name settings.gradle.kts -print -quit)
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle.kts tidak ditemukan"
+            find project -maxdepth 4 -type f
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "Project ditemukan: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
+
       - name: Build APK
         script: |
-          cd project
-          curl -L https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /tmp
+          cd "$PROJECT_DIR"
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
           /tmp/gradle-8.9/bin/gradle --no-daemon assembleDebug
+
     artifacts:
-      - project/app/build/outputs/apk/debug/*.apk
+      - project/**/build/outputs/apk/debug/*.apk
