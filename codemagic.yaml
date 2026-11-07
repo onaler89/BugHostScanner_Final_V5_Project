@@ -6,10 +6,17 @@ workflows:
     instance_type: mac_mini_m2
 
     scripts:
-      - name: Extract project ZIP
+            - name: Extract project ZIP
         script: |
           mkdir -p project
-          unzip -o BugHostScanner_Codemagic_Ready.zip -d project
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ZIP tidak ditemukan"
+            ls -la
+            exit 1
+          fi
+          echo "ZIP ditemukan: $ZIP_FILE"
+          unzip -o "$ZIP_FILE" -d project
 
       - name: Find Gradle project
         script: |
