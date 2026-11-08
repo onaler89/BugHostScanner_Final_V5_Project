@@ -1,52 +1,24 @@
-workflows:
-  android-build:
-    name: BugHostScanner V5 Android Build
-    max_build_duration: 60
-    instance_type: linux_x2
+scripts:
+  - name: Find and extract V5 ZIP
+    script: |
+      set -e
 
-    environment:
-      java: 17
+      echo "Mencari file ZIP V5..."
 
-    scripts:
-      - name: Prepare project
-        script: |
-          set -e
-          mkdir -p project
-          ZIP_FILE="BugHostScanner_Codemagic_Ready-2.zip"
+      ZIP_FILE=$(find . -type f \
+        -name "BugHostScanner_Codemagic_Ready-2.zip" \
+        -print -quit)
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP V5 tidak ditemukan!"
-            exit 1
-          fi
+      if [ -z "$ZIP_FILE" ]; then
+        echo "ERROR: ZIP V5 tidak ditemukan!"
+        echo "Daftar file ZIP:"
+        find . -type f -name "*.zip"
+        exit 1
+      fi
 
-          unzip -o "$ZIP_FILE" -d project
+      echo "ZIP ditemukan: $ZIP_FILE"
 
-      - name: Locate Android project
-        script: |
-          set -e
-          SETTINGS=$(find project -name settings.gradle -o -name settings.gradle.kts | head -n 1)
+      mkdir -p project
+      unzip -o "$ZIP_FILE" -d project
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle tidak ditemukan!"
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$SETTINGS")
-          echo "Project directory: $PROJECT_DIR"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $CM_ENV
-
-      - name: Build APK
-        script: |
-          set -e
-          cd "$PROJECT_DIR"
-
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug
-          else
-            echo "ERROR: Gradle wrapper tidak ditemukan!"
-            exit 1
-          fi
-
-    artifacts:
-      - project/**/build/outputs/apk/**/*.apk
+      echo "Ekstraksi selesai."
