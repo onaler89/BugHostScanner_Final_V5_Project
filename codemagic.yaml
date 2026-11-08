@@ -1,24 +1,58 @@
-scripts:
-  - name: Find and extract V5 ZIP
-    script: |
-      set -e
+workflows:
+  android-build:
+    name: BugHostScanner V5
+    max_build_duration: 60
+    instance_type: linux_x2
 
-      echo "Mencari file ZIP V5..."
+    environment:
+      java: 17
 
-      ZIP_FILE=$(find . -type f \
-        -name "BugHostScanner_Codemagic_Ready-2.zip" \
-        -print -quit)
+    scripts:
+      - name: Show repository files
+        script: |
+          echo "Repository contents:"
+          find . -maxdepth 4 -type f | sort | head -200
 
-      if [ -z "$ZIP_FILE" ]; then
-        echo "ERROR: ZIP V5 tidak ditemukan!"
-        echo "Daftar file ZIP:"
-        find . -type f -name "*.zip"
-        exit 1
-      fi
+      - name: Find V5 ZIP
+        script: |
+          set -e
+          ZIP_FILE=$(find . -type f \
+            -name "BugHostScanner_Codemagic_Ready-2.zip" \
+            -print -quit)
 
-      echo "ZIP ditemukan: $ZIP_FILE"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ZIP V5 tidak ditemukan!"
+            find . -type f -name "*.zip"
+            exit 1
+          fi
 
-      mkdir -p project
-      unzip -o "$ZIP_FILE" -d project
+          echo "ZIP ditemukan: $ZIP_FILE"
+          mkdir -p project
+          unzip -o "$ZIP_FILE" -d project
 
-      echo "Ekstraksi selesai."
+      - name: Locate Gradle project
+        script: |
+          set -e
+          SETTINGS=$(find project -type f \
+            \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -print -quit)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "Gradle project tidak ditemukan!"
+            find project -maxdepth 5 -type f
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
+
+      - name: Build Android APK
+        script: |
+          set -e
+          source "$CM_ENV"
+          cd "$PROJECT_DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+    artifacts:
+      - project/**/build/outputs/apk/**/*.apk
